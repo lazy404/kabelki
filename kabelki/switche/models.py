@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 from django.db import models
+from smart_selects.db_fields import ChainedForeignKey 
 
 PORT_TYPE = (
     ('ethernet', 'ethernet'),
@@ -25,11 +26,7 @@ class HostType(models.Model):
         verbose_name_plural='Typy Hostów'
         verbose_name='Typ hosta'
     name=models.CharField(max_length=256, blank=False)
-    ports=models.ManyToManyField(Port)
     comment=models.CharField(max_length=256, blank=True)
-
-    def used_ports(self):
-        return ", ".join([p.name for p in self.ports.all()])
 
     def __unicode__(self):
         return self.name
@@ -40,11 +37,13 @@ class Host(models.Model):
         verbose_name='Host'
     name=models.CharField(max_length=256, blank=False)
     host_type=models.ForeignKey(HostType, blank=False)
+    ports=models.ManyToManyField(Port)
+    
     active=models.BooleanField(default=True)
     comment=models.CharField(max_length=256, blank=True)
 
     def used_ports(self):
-        return self.host_type.used_ports()
+        return ", ".join([p.name for p in self.ports.all()])
 
     def __unicode__(self):
         return u'%s - %s' %(self.host_type.name, self.name)
@@ -57,6 +56,14 @@ class Connection(models.Model):
         
     name=models.CharField(max_length=256, blank=False)
     hosta=models.ForeignKey(Host, blank=False)
+
+    porta = ChainedForeignKey(
+            Port, 
+            chained_field="hosta",
+            chained_model_field="name", 
+            show_all=False, 
+            auto_choose=True)
+
     porta=models.ForeignKey(Port, blank=False)
     hostb=models.ForeignKey(Host, blank=False, related_name='hostb_link')
     portb=models.ForeignKey(Port, blank=False, related_name='portb_link')
